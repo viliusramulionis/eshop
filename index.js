@@ -6,6 +6,7 @@ import products from './controller/products.js'
 import orders from './controller/orders.js'
 
 const app = express()
+const port = process.env.APP_PORT || 5000
 
 app.use(express.json())
 app.use(express.urlencoded({
@@ -45,4 +46,4 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.resolve('./public/admin.html'))
 })
 
-app.listen(3000)
+app.listen(port)
