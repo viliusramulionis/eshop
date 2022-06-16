@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prekių užsakymas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+    <style>
+        .products {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .products li {
+            border:5px solid black;
+            padding: 20px;
+            flex: 0 0 25%;
+        }
+
+        .products h4 {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div id="messages" class="alert" role="alert" style="display: none;"></div>
+        <h1>Prekės užsakymas</h1>
+        <form onsubmit="saveOrder(event)">
+            <div id="productsList" class="pt-4 pb-4"></div>
+            <div class="mb-3">
+                <label class="form-label">Vardas:</label>
+                <input type="text" class="form-control" name="fName" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Pavardė:</label>
+                <input type="text" class="form-control" name="lName" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Adresas:</label>
+                <input type="text" class="form-control" name="address" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Miestas:</label>
+                <input type="text" class="form-control" name="city" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Telefono nr:</label>
+                <input type="tel" class="form-control" name="phone" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">El. pašto adresas:</label>
+                <input type="email" class="form-control" name="email">
+            </div>
+            <button class="btn btn-primary">Pateikti užsakymą</button>
+        </form>
+    </div>
+    <script>
+        const productsList = document.querySelector('#productsList')
+
+        const setMessages = (message, status) => {
+            messages.textContent = message
+            messages.style.display = 'block'
+            messages.classList.remove('alert-success', 'alert-danger')
+            messages.classList.add(status)
+
+            setTimeout(() => {
+                messages.style.display = 'none'
+            }, 5000)
+        }
+
+        const getProductsList = () => {
+            fetch('/products')
+            .then(async resp => {
+                if(resp.status === 200) {
+                    const json = await resp.json()
+                    let html = `<ul class="products">`
+
+                    json.map(product => {
+                        html += `<li>
+                                    <label>
+                                        <div><img src="uploads/${product.photo}" alt="" /></div>
+                                        <h4>${product.name}</h4>
+                                        <p>${product.description}</p>
+                                        <input type="radio" name="product" value="${product._id}">
+                                    </label>
+                                </li>`
+                    })
+                    
+                    html += `</ul>`
+
+                    productsList.innerHTML = html
+                } else {
+                    setMessages('Nepavyko gauti produktų sąrašo', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const saveOrder = (event) => {
+            event.preventDefault()
+
+            const form = new FormData(event.target)
+
+            fetch('/orders/new', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(Object.fromEntries(form))
+            })
+            .then(resp => {
+                if(resp.status === 200) 
+                    setMessages('Užsakymas sėkmingai patalpintas', 'alert-success')
+                else
+                    setMessages('Neteisingai užpildyti duomenys', 'alert-danger')
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        window.addEventListener('load', () => {
+            getProductsList()
+
+        })
+    </script>
+</body>
+</html>

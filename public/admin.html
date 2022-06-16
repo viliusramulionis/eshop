@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administratorius</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container">
+        <div id="messages" class="alert" role="alert" style="display: none;"></div>
+        <div id="dashboard">
+            <h2>Užsakymai</h2>
+            <div id="ordersList"></div>
+            <h2>Prekės</h2>
+            <div id="productsList"></div>
+            <div>
+                <button class="btn btn-primary" onclick="addNewProduct(event)">Nauja prekė</button>
+            </div>
+        </div>
+        <div id="productForm" style="display: none;">
+            <h2>Naujos prekės pridėjimas</h2>
+            <form onsubmit="submitNewProduct(event)">
+                <div class="mb-3">
+                    <label class="form-label">Produkto pavadinimas</label>
+                    <input type="text" class="form-control" name="name" placeholder="Fainas staliukas">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Produkto aprašymas</label>
+                    <textarea class="form-control" name="description"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Produkto nuotrauka</label>
+                    <input type="file" class="form-control" name="photo">
+                </div>
+                <div>
+                    <button class="btn btn-primary">Pridėti prekę</button>
+                    <button onclick="toggleForm(event, productForm)" class="btn btn-primary">Atšaukti</button>
+                </div>
+            </form>
+        </div>
+        <div id="editProductForm" style="display: none;">
+            <h2>Prekės redagavimas</h2>
+            <form onsubmit="submitEditProduct(event)">
+                <div class="mb-3">
+                    <label class="form-label">Produkto pavadinimas</label>
+                    <input type="text" class="form-control" name="name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Produkto aprašymas</label>
+                    <textarea class="form-control" name="description"></textarea>
+                </div>
+                <div>
+                    <button class="btn btn-primary">Redaguoti prekę</button>
+                    <button onclick="toggleForm(event, editProductForm)" class="btn btn-primary">Atšaukti</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        const productForm = document.querySelector('#productForm')
+        const editProductForm = document.querySelector('#editProductForm')
+        const dashboard = document.querySelector('#dashboard')
+        const messages = document.querySelector('#messages')
+        const productsList = document.querySelector('#productsList')
+        const ordersList = document.querySelector('#ordersList')
+
+        const setMessages = (message, status) => {
+            messages.textContent = message
+            messages.style.display = 'block'
+            messages.classList.remove('alert-success', 'alert-danger')
+            messages.classList.add(status)
+
+            setTimeout(() => {
+                messages.style.display = 'none'
+            }, 5000)
+        }
+
+        const toggleForm = (event, form) => {
+            event.preventDefault()
+            if(dashboard.style.display === 'none') {
+                dashboard.style.display = 'block'
+                form.style.display = 'none'
+            } else {
+                form.style.display = 'block'
+                dashboard.style.display = 'none'
+            }
+        }
+
+        const addNewProduct = (event) => {
+            event.preventDefault()
+
+            toggleForm(event, productForm)
+        }
+
+        const submitNewProduct = (event) => {
+            event.preventDefault()
+
+            const form = event.target
+            const data = new FormData(form)
+
+            fetch('/products/new', {
+                method: 'POST',
+                body: data
+            })
+            .then(resp => {
+                if(resp.status === 200) {
+                    toggleForm(event, productForm)
+                    setMessages('Produktas sėkmingai išsaugotas', 'alert-success')
+                    getProductsList()
+                } else {
+                    setMessages('Neteisingai uŽpildyti duomenys', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const editProduct = (event, id) => {
+            event.preventDefault()
+
+            fetch('/products/details/' + id)
+            .then(async resp => {
+                if(resp.status === 200) {
+                    const json = await resp.json()
+
+                    editProductForm.querySelector('input[name="name"]').value = json.name
+                    editProductForm.querySelector('textarea[name="description"]').value = json.description
+                    editProductForm.dataset.id = id
+
+                } else {
+                    setMessages('Nepavyko gauti produkto duomenų', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+
+            toggleForm(event, editProductForm)
+        }
+
+        const submitEditProduct = (event) => {
+            event.preventDefault()
+
+            const form = event.target
+            const id = editProductForm.dataset.id
+            const name = form.querySelector('input[name="name"]').value
+            const description = form.querySelector('textarea[name="description"]').value
+            
+            fetch('/products/update/' + id, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description })
+            })
+            .then(resp => {
+                if(resp.status === 200) {
+                    toggleForm(event, editProductForm)
+                    setMessages('Produktas sėkmingai išsaugotas', 'alert-success')
+                    getProductsList()
+                } else {
+                    setMessages('Neteisingai uŽpildyti duomenys', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const getProductsList = () => {
+            fetch('/products')
+            .then(async resp => {
+                if(resp.status === 200) {
+                    const json = await resp.json()
+                    
+                    if(json.length === 0) {
+                        productsList.innerHTML = '<p>Nėra sukurtų užsakymų</p>'
+                        return false
+                    }
+
+                    let html = `
+                    <table class="table">
+                        <thead>
+                            <th>Prekės pavadinimas</th>
+                            <th>Prekės aprašymas</th>
+                            <th></th>
+                        </thead>
+                        <tbody>`
+
+                    json.map(product => {
+                        html += `<tr>
+                                    <td>${product.name}</td>
+                                    <td>${product.description}</td>
+                                    <td>
+                                        <button onclick="deleteProduct(event, '${product._id}')" class="btn btn-danger">Ištrinti</button>
+                                        <button onclick="editProduct(event, '${product._id}')" class="btn btn-primary">Redaguoti</button>
+                                    </td>
+                                </tr>`
+                    })
+                    
+                    html += `</tbody></table>`
+
+                    productsList.innerHTML = html
+                } else {
+                    setMessages('Nepavyko gauti produktų sąrašo', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const deleteProduct = (event, id) => {
+            event.preventDefault()
+            
+            fetch('/products/delete/'+ id, {
+                method: 'DELETE'
+            })
+            .then(resp => {
+                if(resp.status === 200) {
+                    setMessages('Produktas sėkmingai ištrintas', 'alert-success')
+                    getProductsList()
+                } else {
+                    setMessages('Nepavyko ištrinti įrašo', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const getOrdersList = () => {
+            fetch('/orders')
+            .then(async resp => {
+                if(resp.status === 200) {
+                    const json = await resp.json()
+
+                    if(json.length === 0) {
+                        ordersList.innerHTML = '<p>Nėra sukurtų užsakymų</p>'
+                        return false
+                    }
+
+                    let html = `
+                    <table class="table">
+                        <thead>
+                            <th>Prekė</th>
+                            <th>Vardas</th>
+                            <th>Pavardė</th>
+                            <th>Adresas</th>
+                            <th>Miestas</th>
+                            <th>Telefonas</th>
+                            <th>El. paštas</th>
+                            <th>Statusas</th>
+                            <th></th>
+                        </thead>
+                        <tbody>`
+
+                    json.map(order => {
+                        html += `<tr>
+                                    <td>${order.product}</td>
+                                    <td>${order.fName}</td>
+                                    <td>${order.lName}</td>
+                                    <td>${order.address}</td>
+                                    <td>${order.city}</td>
+                                    <td>${order.phone}</td>
+                                    <td>${order.email}</td>
+                                    <td>
+                                        <select class="form-select" onchange="setOrderStatus(event, '${order._id}')">
+                                            <option value="0" ${order.status === 0 ? 'selected' : ''}>Pateiktas</option>
+                                            <option value="1" ${order.status === 1 ? 'selected' : ''}>Užbaigtas</option>
+                                            <option value="2" ${order.status === 2 ? 'selected' : ''}>Atšauktas</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button onclick="deleteOrder(event, '${order._id}')" class="btn btn-danger">Ištrinti</button>
+                                    </td>
+                                </tr>`
+                    })
+                    
+                    html += `</tbody></table>`
+                    
+                    ordersList.innerHTML = html
+                } else {
+                    setMessages('Nepavyko gauti užsakymų sąrašo', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const deleteOrder = (event, id) => {
+            event.preventDefault()
+            
+            fetch('/orders/delete/'+ id, {
+                method: 'DELETE'
+            })
+            .then(resp => {
+                if(resp.status === 200) {
+                    setMessages('Užsakymas sėkmingai ištrintas', 'alert-success')
+                    getOrdersList()
+                } else {
+                    setMessages('Nepavyko ištrinti įrašo', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        const setOrderStatus = (event, id) => {
+            event.preventDefault()
+            
+            const status = event.target.value
+
+            fetch('/orders/status/' + id + '/' + status, {
+                method: 'PUT'
+            })
+            .then(resp => {
+                if(resp.status === 200) {
+                    setMessages('Užsakymo statusas sėkmingai pakeistas', 'alert-success')
+                    getOrdersList()
+                } else {
+                    setMessages('Nepavyko atnaujinti įrašo', 'alert-danger')
+                }
+            })
+            .catch(() => {
+                setMessages('Nepavyko prisijungti prie serverio', 'alert-danger')
+            })
+        }
+
+        window.addEventListener('load', () => {
+            getOrdersList()
+            getProductsList()
+        })
+    </script>
+</body>
+</html>
