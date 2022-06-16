@@ -6,7 +6,7 @@ import products from './controller/products.js'
 import orders from './controller/orders.js'
 
 const app = express()
-const port = process.env.APP_PORT || 5000
+const port = process.env.PORT || 5000
 
 app.use(express.json())
 app.use(express.urlencoded({
