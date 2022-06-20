@@ -42,8 +42,8 @@ router.get('/', async (req, res) => {
     try {
         const products = await Products.find()
         res.status(200).json(products)
-    } catch {
-        res.sendStatus(202)
+    } catch(error) {
+        res.status(202).send(error)
     }
 })
 
