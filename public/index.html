@@ -77,9 +77,7 @@
         const getProductsList = () => {
             fetch('/products')
             .then(async resp => {
-                console.log(resp)
                 if(resp.status === 200) {
-                    
                     const json = await resp.json()
                     let html = `<ul class="products">`
 
